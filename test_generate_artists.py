@@ -1,7 +1,7 @@
 import logging
 from unittest import TestCase, mock
 
-from generate_artists import find_multiple_artists
+from generate_artists import find_multiple_artists, get_album_and_artist
 
 """
 Stuff to test:
@@ -16,7 +16,7 @@ Partition:
 """
 
 
-class Test(TestCase):
+class TestForwardSlashFormat(TestCase):
     thelist = ["AC/DC", "Au/Ra"]
 
     @mock.patch('generate_artists.logger')
@@ -53,3 +53,68 @@ class Test(TestCase):
     def test_TwoArtistFromList(self, *_):
         result = find_multiple_artists("Kygo/AC/DC", self.thelist)
         self.assertSetEqual(set(result), {"Kygo", "AC/DC"})
+
+
+"""
+Stuff to test:
+    - No artist
+    - 1 Artist
+    - Multiple Artist
+"""
+
+
+class TestDoubleEqualFormat(TestCase):
+    thelist = """AC/DC
+Au/Ra
+Yusuf / Cat Stevens"""
+#     thelist = ["AC/DC", "Au/Ra"]
+    
+    class MockResponse:
+        text = """AC/DC
+Au/Ra
+Yusuf / Cat Stevens""" 
+
+    @mock.patch('generate_artists.logger')
+    def test_ZeroArtist(self, *_):
+        result = get_album_and_artist("Never Gonna Give you up==125")
+        self.assertTupleEqual(result, ("Never Gonna Give you up", ("Unknown Artist",)))
+
+    @mock.patch('generate_artists.logger')
+    @mock.patch('requests.get', return_value=MockResponse)
+    def test_OneArtist(self, *_):
+        result = get_album_and_artist("Never Gonna Give you up==125==Rick Astley")
+        self.assertTupleEqual(result, ("Never Gonna Give you up", ("Rick Astley",)))
+
+    @mock.patch('generate_artists.logger')
+    @mock.patch('requests.get', return_value=MockResponse)
+    def test_OneArtistOtherfmt(self, *_):
+        result = get_album_and_artist("Made Up Tunes==125==Rick Astley/Au/Ra/Kygo")
+        self.assertTupleEqual(result, ("Made Up Tunes", ("Au/Ra","Rick Astley", "Kygo")))
+
+    @mock.patch('generate_artists.logger')
+    @mock.patch('requests.get', return_value=thelist)
+    @mock.patch('time.sleep', return_value=1)
+    def test_downloadFailure(self, *_):
+        result = get_album_and_artist("Made Up Tunes==125==Rick Astley/Au/Ra/Kygo")
+        self.assertTupleEqual(result, ("Made Up Tunes", ("Rick Astley", "Au", "Ra", "Kygo")))
+
+
+
+    @mock.patch('generate_artists.logger')
+    @mock.patch('requests.get', return_value=MockResponse)
+    def test_MoreThanOneArtist(self, *_):
+        result = get_album_and_artist("Suicide Squad: The Album==12==Skrillex==Rick Ross==Lil Wayne==Wiz "
+                                      "Khalifa==Imagine Dragons==X Ambassadors==Logic==Ty Dolla $ign==Twenty One "
+                                      "Pilots==Action Bronson==Mark Ronson==Dan Auerbach==Kehlani==Kevin "
+                                      "Gates==SAYGRACE==G-Eazy==Eminem==Skylar Grey==Grimes==Panic! At The "
+                                      "Disco==War==Creedence Clearwater Revival==ConfidentialMX==Becky Hanson")
+        self.assertTupleEqual(result, ("Suicide Squad: The Album", tuple("Skrillex==Rick Ross==Lil Wayne==Wiz "
+                                                                         "Khalifa==Imagine Dragons==X "
+                                                                         "Ambassadors==Logic==Ty Dolla $ign==Twenty "
+                                                                         "One Pilots==Action Bronson==Mark Ronson==Dan "
+                                                                         "Auerbach==Kehlani==Kevin "
+                                                                         "Gates==SAYGRACE==G-Eazy==Eminem==Skylar "
+                                                                         "Grey==Grimes==Panic! At The "
+                                                                         "Disco==War==Creedence Clearwater "
+                                                                         "Revival==ConfidentialMX==Becky "
+                                                                         "Hanson".split("=="))))
