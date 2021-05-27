@@ -12,6 +12,9 @@ from typing import Dict, Tuple, TypeVar
 import requests
 
 
+# uncomment for unit testing
+# logger = logging.getLogger()
+
 def find_all_dat_files():
     """
     finds all the dat files in "User_Generated_Files" folder
@@ -27,7 +30,7 @@ def find_all_dat_files():
     return all_files
 
 
-def get_album_and_artist(line: str) -> Tuple[str, str]:
+def get_album_and_artist(line: str) -> Tuple[str, Tuple]:
     """
     from a `dat` file return the album and artist name from the given line.
     Returns "Unknown Artist" if artist key is not present
@@ -38,7 +41,11 @@ def get_album_and_artist(line: str) -> Tuple[str, str]:
 
     # if artist key is not present
     if len(splitted) == 2:
-        artist = "Unknown Artist"
+        artist = ("Unknown Artist",)
+    # if `==` format is used
+    elif len(splitted) > 3:
+        artist: Tuple = tuple(splitted[2:-1] + [splitted[-1].rstrip("\n")])
+    # if `/` format (default by script) is used
     else:
         artist = find_multiple_artists(splitted[-1].strip("\n"))
 
@@ -71,8 +78,7 @@ def download_artist_exceptions_list() -> tuple:
     while (tries := tries + 1) <= 3:
         try:
             ARTISTS_WITH_SLASH = requests.get(
-                "https://gist.githubusercontent.com/RoguedBear/b0c7028c6ca194f01218d3281644bbc0"
-                "/raw/bc4010c7fbfe3ec4fdf0e7af2adf81864a16ce14/artists.txt").text.split("\n")
+                "https://gist.githubusercontent.com/RoguedBear/b0c7028c6ca194f01218d3281644bbc0/raw/").text.split("\n")
         except Exception as e:
             logger.exception(e)
             logger.warning("Unable to download artist list! giving %d more tries", 4 - tries)
